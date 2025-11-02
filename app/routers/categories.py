@@ -27,7 +27,9 @@ async def get_category(filter: CategoryFilter = FilterDepends(CategoryFilter),
     """
     Возвращает список категорий. Можно отфлитровать, применить пагинацию.
     """
-    query = filter.filter(query = select(CategoryModel).where(CategoryModel.is_active == True))
+    query = select(CategoryModel).where(CategoryModel.is_active == True)
+    query = filter.filter(query)
+    query = filter.sort(query)
     return await paginate(db, query)
 
 @router.post('/', response_model=CategoryResponseSchema, status_code=201)

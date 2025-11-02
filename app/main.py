@@ -21,5 +21,5 @@ async def root():
     """
     Корневой маршрут
     """
-    return {'message': 'Welcome to fastAPI ecommerce app'}
+    return {'message': 'Welcome to OMG!Place ecommerce app'}
 

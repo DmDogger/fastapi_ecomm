@@ -23,7 +23,9 @@ router = APIRouter(
 @router.get('/', response_model=Page[ProductOut], status_code=200)
 async def get_products(filter: ProductFilter = FilterDepends(ProductFilter),
         db: AsyncSession = Depends(get_async_db)):
-    query = filter.filter(select(ProductModel).where(ProductModel.is_active == True))
+    query = select(ProductModel).where(ProductModel.is_active == True)
+    query = filter.filter(query)
+    query = filter.sort(query)
     return await paginate(db, query)
 
 
@@ -47,7 +49,7 @@ async def create_product(product: ProductCreateSchema,
     return new_product_orm
 
 
-@router.get('/{category_id}', response_model=list[ProductSchema])
+@router.get('/search/{category_id}', response_model=list[ProductSchema])
 async def get_products_by_category(category_id: int,
                                    db: AsyncSession = Depends(get_async_db)):
     """ Возвращает товар в категории по его ID """
@@ -62,7 +64,7 @@ async def get_products_by_category(category_id: int,
     return products
 
 
-@router.get("/{product_id}", response_model=ProductSchema) ###### refactoring --->
+@router.get("/search/{product_id}", response_model=ProductSchema) ###### refactoring --->
 async def get_product(product_id: int,
                       db: AsyncSession = Depends(get_async_db)):
     """
