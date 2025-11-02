@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi_filter import FilterDepends
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.categories import Category as CategoryModel
-from app.schemas import Category as CategoryResponseSchema, CategoryCreate as CategoryCreateSchema
+from app.schemas import Category as CategoryResponseSchema, CategoryCreate as CategoryCreateSchema, CategoryOut, CategoryFilter
 from app.db_depends import get_async_db
 
 from app.services import find_category, find_all_active_categories
+from app.core.exceptions import CategoryNotFound
 
 
 
@@ -17,13 +21,14 @@ router = APIRouter(
     tags=['categories']
                    )
 
-@router.get('/', response_model=list[CategoryResponseSchema], status_code=200)
-async def get_all_categories(db: AsyncSession = Depends(get_async_db)):
+@router.get('/', response_model=Page[CategoryOut], status_code=200)
+async def get_category(filter: CategoryFilter = FilterDepends(CategoryFilter),
+        db: AsyncSession = Depends(get_async_db)):
     """
-    Возвращает список всех категорий товаров
+    Возвращает список категорий. Можно отфлитровать, применить пагинацию.
     """
-    all_categories = await find_all_active_categories(db)
-    return all_categories
+    query = filter.filter(query = select(CategoryModel).where(CategoryModel.is_active == True))
+    return await paginate(db, query)
 
 @router.post('/', response_model=CategoryResponseSchema, status_code=201)
 async def create_category(category: CategoryCreateSchema, db: AsyncSession = Depends(get_async_db)):
@@ -36,7 +41,7 @@ async def create_category(category: CategoryCreateSchema, db: AsyncSession = Dep
         result = await db.scalars(stmt)
         parent = result.first()
         if parent is None:
-            raise HTTPException(status_code=400, detail='Parent category not found')
+            raise CategoryNotFound()
 
     db_category = CategoryModel(**category.model_dump())
     db.add(db_category)
@@ -46,7 +51,7 @@ async def create_category(category: CategoryCreateSchema, db: AsyncSession = Dep
 
 
 
-@router.put('/category/{category_id}', response_model=CategoryResponseSchema, status_code=200)
+@router.put('/{category_id}', response_model=CategoryResponseSchema, status_code=200)
 async def update_category(category_id: int,
                           category: CategoryCreateSchema,
                           db: AsyncSession = Depends(get_async_db)):
@@ -56,7 +61,7 @@ async def update_category(category_id: int,
     # Проверка существования категории
     db_category = await find_category(category_id, db)
     if db_category is None:
-        raise HTTPException(status_code=404, detail='Category not found in Database')
+        raise CategoryNotFound()
 
     # Проверка существования parent_id если указан
     if category.parent_id is not None:
@@ -64,7 +69,7 @@ async def update_category(category_id: int,
                                                               CategoryModel.is_active == True))
         parent_id = cursor.first()
         if parent_id is None:
-            raise HTTPException(status_code=404, detail='Parent category not found')
+            raise CategoryNotFound()
 
     update_data = category.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -77,7 +82,7 @@ async def update_category(category_id: int,
 
 
 
-@router.delete('/category/{category_id}', status_code=200)
+@router.delete('/{category_id}', status_code=200)
 async def delete_category(category_id: int,
                           db: AsyncSession = Depends(get_async_db)):
     """
@@ -86,7 +91,7 @@ async def delete_category(category_id: int,
     # --- проверка существования категории ---
     category = await find_category(category_id, db)
     if category is None:
-        raise HTTPException(status_code=404, detail='Category not found')
+        raise CategoryNotFound()
     # --- обновляем статус категории на is_active = False ---
     category.is_active = False
     await db.commit()

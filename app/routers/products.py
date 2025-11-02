@@ -1,6 +1,7 @@
 # app/routers/products.py
 
 from fastapi import APIRouter, Depends
+from fastapi_filter import FilterDepends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi_pagination import Page
@@ -10,7 +11,7 @@ from app.auth import get_current_seller
 from app.db_depends import get_async_db
 from app.models.products import Product as ProductModel # ORM Модель
 from app.models.users import User as UserModel
-from app.schemas import ProductCreate as ProductCreateSchema, ProductOut, Product as ProductSchema
+from app.schemas import ProductCreate as ProductCreateSchema, ProductOut, Product as ProductSchema, ProductFilter
 from app.core.exceptions import CategoryNotFound, ProductNotFound, ProductOwnershipError
 from app.services import find_active_product, find_category, validate_product_ownership
 
@@ -20,9 +21,10 @@ router = APIRouter(
 )
 
 @router.get('/', response_model=Page[ProductOut], status_code=200)
-async def get_products(db: AsyncSession = Depends(get_async_db)):
-    stmt = select(ProductModel).where(ProductModel.is_active == True)
-    return await paginate(db, stmt)
+async def get_products(filter: ProductFilter = FilterDepends(ProductFilter),
+        db: AsyncSession = Depends(get_async_db)):
+    query = filter.filter(select(ProductModel).where(ProductModel.is_active == True))
+    return await paginate(db, query)
 
 
 @router.post('/',response_model=ProductSchema, status_code=201)

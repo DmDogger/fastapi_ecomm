@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from fastapi_filter.contrib.sqlalchemy import Filter as SQLAlchemyFilter
+from app.models.products import Product as ProductModel
+from app.models.categories import Category as CategoryModel
 from decimal import Decimal
 from datetime import datetime
 
-
-# --- Модели Категорий ---
 class CategoryCreate(BaseModel):
     """
     Модель для создания и обновления категорий.
@@ -30,6 +31,28 @@ class Category(CategoryCreate):
     is_active: bool = Field(description='Активность категории')
 
     model_config = ConfigDict(from_attributes=True)
+
+class CategoryOut(BaseModel):
+    """
+    Модель для ответа категорий с примененной пагинацией
+    """
+    id: int
+    name: str
+    parent_id: int | None
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CategoryFilter(SQLAlchemyFilter):
+    id: int | None = Field(default=None,
+                           description='Фильтрация по ID категории')
+    name: str | None = Field(default=None,
+                             description='Фильтрация по имени категории')
+    parent_id: int | None = Field(default=None,
+                                  description='Фильтрация по родительской категории')
+
+    class Constants(SQLAlchemyFilter.Constants):
+        model = CategoryModel
 
 
 # --- Модели Товаров ---
@@ -133,3 +156,28 @@ class ProductOut(BaseModel):
     price: float
     rating: float
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProductFilter(SQLAlchemyFilter):
+    """ Модель для ответа с данными продукта с примененной фильтрацией"""
+    id: int | None = Field(default=None)
+    name: str | None = Field(default=None)
+
+    price__gte: float | None = Field(title='Минимальная цена',
+                                     description='Цена больше или равна',
+                                     default=None)
+    price__lte: float | None = Field(title='Максимальная цена',
+                                     description='Цена меньше или равна',
+                                     default=None)
+
+    rating__gt : float | None = Field(title='Минимальный рейтинг',
+                                      description='Рейтинг строго больше',
+                                      default=None)
+    rating__lt: float | None = Field(title='Максимальный рейтинг',
+                                     description='Рейтинг строго меньше',
+                                     default=None)
+
+    order_by: list[str] | None = Field(default=None)
+
+    class Constants(SQLAlchemyFilter.Constants):
+        model = ProductModel

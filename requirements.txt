@@ -1,3 +1,4 @@
+fastapi-filter
 fastapi-pagination
 pyjwt
 uliweb-alembic
