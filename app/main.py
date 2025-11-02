@@ -1,13 +1,11 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from app.routers import categories, products, users, reviews
-from fastapi.responses import JSONResponse
 app = FastAPI(
     title='FastAPI Ecommerce app',
     version='0.1.0'
 )
 
 
-# Подключаем маршруты к main.py (из routers)
 app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(users.router)
