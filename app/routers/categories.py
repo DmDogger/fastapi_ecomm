@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_filter import FilterDepends
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
+from fastapi_pagination import Page, Params
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,11 +9,8 @@ from app.models.categories import Category as CategoryModel
 from app.schemas import Category as CategoryResponseSchema, CategoryCreate as CategoryCreateSchema, CategoryOut, CategoryFilter
 from app.db_depends import get_async_db
 
-from app.services import find_category, find_all_active_categories
 from app.core.exceptions import CategoryNotFound
-
-
-
+from app.core.dependecies.services.category_service import CategoryService, get_category_service
 
 router = APIRouter(
     prefix='/categories',
@@ -22,35 +18,23 @@ router = APIRouter(
                    )
 
 @router.get('/', response_model=Page[CategoryOut], status_code=200)
-async def get_category(filter: CategoryFilter = FilterDepends(CategoryFilter),
-        db: AsyncSession = Depends(get_async_db)):
+async def get_category(category_service: CategoryService = Depends(get_category_service),
+                       filter_: CategoryFilter = FilterDepends(CategoryFilter),
+                       params: Params = Depends()):
     """
-    Возвращает список категорий. Можно отфлитровать, применить пагинацию.
+    Возвращает список категорий.
     """
-    query = select(CategoryModel).where(CategoryModel.is_active == True)
-    query = filter.filter(query)
-    query = filter.sort(query)
-    return await paginate(db, query)
+    categories = await category_service.get_paginate_categories(filter_=filter_, params=params)
+    return categories
 
 @router.post('/', response_model=CategoryResponseSchema, status_code=201)
-async def create_category(category: CategoryCreateSchema, db: AsyncSession = Depends(get_async_db)):
+async def create_category(category: CategoryCreateSchema,
+                          category_service: CategoryService = Depends(get_category_service)):
     """
     Создает новую категорию
     """
-    if category.parent_id is not None:
-        stmt = select(CategoryModel).where(CategoryModel.id == category.parent_id,
-                                           CategoryModel.is_active == True)
-        result = await db.scalars(stmt)
-        parent = result.first()
-        if parent is None:
-            raise CategoryNotFound()
-
-    db_category = CategoryModel(**category.model_dump())
-    db.add(db_category)
-    await db.commit()
-    await db.refresh(db_category)
-    return db_category
-
+    category = await category_service.create_category(category)
+    return category
 
 
 @router.put('/{category_id}', response_model=CategoryResponseSchema, status_code=200)

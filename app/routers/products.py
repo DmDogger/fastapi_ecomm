@@ -13,7 +13,7 @@ from app.models.products import Product as ProductModel # ORM Модель
 from app.models.users import User as UserModel
 from app.schemas import ProductCreate as ProductCreateSchema, ProductOut, Product as ProductSchema, ProductFilter
 from app.core.exceptions import CategoryNotFound, ProductNotFound, ProductOwnershipError
-from app.services import find_active_product, find_category, validate_product_ownership
+# from app.services import find_active_product, find_category, validate_product_ownership
 
 router = APIRouter(
     prefix='/products',

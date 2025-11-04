@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.routers import categories, products, users, reviews
-from fastapi_pagination import Page, add_pagination, paginate
+from fastapi_pagination import add_pagination
 app = FastAPI(
     title='OMG!Place',
     description='E-commerce API App.',

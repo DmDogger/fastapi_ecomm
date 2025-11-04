@@ -1,65 +1,53 @@
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.products import Product as ProductModel
 from app.models.users import User as UserModel
-from app.models.reviews import Review as ReviewModel
+from app.repositories.products_repo import ProductRepository
+from app.core.exceptions import (ProductOwnershipError,
+                                 ProductNotFound)
+from app.repositories.review_repo import ReviewRepository
 
-from app.services import find_category
-from app.core.exceptions import ProductNotFound, CategoryNotFound
+
+class ProductService:
+    def __init__(self, product_repository: ProductRepository, review_repository: ReviewRepository):
+        self._product_repository = product_repository
+        self._review_repository = review_repository
+
+    async def get_product_by_owner(self, product_id: int,
+                                         current_user: UserModel):
+        """ Возвращает продукт владельца """
+        product = await self._product_repository.get_product_by_seller(product_id, current_user.id)
+        if not product:
+            raise ProductOwnershipError()
+
+    async def find_all_active_products(self):
+        """ Находит все активные товары """
+        all_products = await self._product_repository.get_all()
+        if not all_products:
+            raise ProductNotFound()
+        return all_products
 
 
-async def validate_product_ownership(product_id: int,
-                                     current_user: UserModel,
-                                     db: AsyncSession):
-    """ Подтверждает связь владельца продукта с продуктом """
-    res = await db.scalars(select(ProductModel).where(ProductModel.seller_id == current_user.id,
-                                                      ProductModel.id == product_id,
-                                                      ProductModel.is_active == True))
-    return res.first()
+    async def find_active_product(self, product_id: int):
+        """ Находит активный товар """
+        product = await self._product_repository.get(product_id)
+        if not product:
+            raise ProductNotFound()
+        return product
 
-async def find_all_active_products(db: AsyncSession):
-    """ Находит все активные товары """
-    stmt = select(ProductModel).where(ProductModel.is_active == True)
-    res = await db.scalars(stmt)
-    return res.all()
+    async def calculate_avg_rating(self, product_id: int):
+        """ Метод для расчета среднего рейтинга продукта"""
+        product = await self._product_repository.get(product_id)
+        if not product:
+            raise ProductNotFound()
+        reviews = await self._review_repository.get_reviews_by_product_id(product_id)
+        if not reviews:
+            return 0.0
+        total = sum(rev.grade for rev in reviews)
+        avg = total / len(reviews)
+        return avg
 
-async def find_active_product(product_id: int, db: AsyncSession):
-    """ Находит активный товар """
-    cursor = await db.scalars(select(ProductModel).where(ProductModel.id == product_id,
-                                                         ProductModel.is_active == True))
-    return cursor.first()
-
-async def calculate_avg_rating(product_id: int,
-                        db: AsyncSession):
-    """ Метод для расчета среднего рейтинга продукта"""
-    # --- Сначала найдем продукт ---
-    product = await find_active_product(product_id, db)
-    if not product:
-        raise ProductNotFound()
-    # ---- Потом проверим существование категории --
-    category = await find_category(product.category_id, db)
-    if not category:
-        raise CategoryNotFound()
-    # --- Формируем рейтинг ---
-    reviews = await db.scalars(select(ReviewModel).where(ReviewModel.product_id == product_id,
-                                                   ReviewModel.is_active == True))
-    reviews = reviews.all()
-    if not reviews:
-        return 0.0
-
-    total = sum(rev.grade for rev in reviews)
-    avg = total / len(reviews)
-    return avg
-
-async def push_product_rating(product_id,
-                              db: AsyncSession):
-    new_rating = await calculate_avg_rating(product_id, db)
-    await db.execute(
-        update(ProductModel)
-        .where(ProductModel.id == product_id)
-        .values(rating=new_rating)
-    )
-    await db.commit()
+    async def push_product_rating(self, product_id):
+        new_rating = await self.calculate_avg_rating(product_id)
+        await self._product_repository.update_product_rating(product_id, new_rating)
+        await self._product_repository.db.commit()
 
 
 

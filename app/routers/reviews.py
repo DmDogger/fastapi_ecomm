@@ -1,16 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.exceptions import ProductNotFound, CategoryNotFound, SellerCannotLeaveReview, CanReviewOnlyOnce, ReviewNotFound
+from app.core.exceptions import ProductNotFound, SellerCannotLeaveReview, CanReviewOnlyOnce, ReviewNotFound
 
 from app.auth import get_current_user, get_current_admin
 
 from app.schemas import ReviewCreate as ReviewCreateSchema, Review as ReviewSchema
 from app.models.reviews import Review as ReviewModel
 from app.models.users import User as UserModel
-
-from app.services import  find_active_product, find_active_review, user_already_reviewed_product, push_product_rating
+from app.repositories.review_repo import ReviewRepository
 from app.db_depends import get_async_db
 
 router = APIRouter(
