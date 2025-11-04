@@ -1,19 +1,16 @@
-# app/routers/products.py
-
 from fastapi import APIRouter, Depends
 from fastapi_filter import FilterDepends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlalchemy import paginate
+from fastapi_pagination import Page, Params
 
 from app.auth import get_current_seller
+from app.core.dependecies.services.product_service import get_product_service
 from app.db_depends import get_async_db
-from app.models.products import Product as ProductModel # ORM Модель
+from app.models.products import Product as ProductModel
 from app.models.users import User as UserModel
 from app.schemas import ProductCreate as ProductCreateSchema, ProductOut, Product as ProductSchema, ProductFilter
 from app.core.exceptions import CategoryNotFound, ProductNotFound, ProductOwnershipError
-# from app.services import find_active_product, find_category, validate_product_ownership
+from app.services.product_service import ProductService
 
 router = APIRouter(
     prefix='/products',
@@ -21,48 +18,42 @@ router = APIRouter(
 )
 
 @router.get('/', response_model=Page[ProductOut], status_code=200)
-async def get_products(filter: ProductFilter = FilterDepends(ProductFilter),
-        db: AsyncSession = Depends(get_async_db)):
-    query = select(ProductModel).where(ProductModel.is_active == True)
-    query = filter.filter(query)
-    query = filter.sort(query)
-    return await paginate(db, query)
-
+async def get_products(product_service:ProductService = Depends(get_product_service),
+                       product_filter: ProductFilter = FilterDepends(ProductFilter),
+                       params: Params = Depends()):
+    products = await product_service.get_filtered_products(product_filter, params)
+    return products
 
 @router.post('/',response_model=ProductSchema, status_code=201)
 async def create_product(product: ProductCreateSchema,
                          current_user: UserModel = Depends(get_current_seller),
-                         db: AsyncSession = Depends(get_async_db)):
+                         product_service: ProductService = Depends(get_product_service)):
     """ Добавить товар. (Только для селлеров)"""
-    # проверка существования категории
-    category = await find_category(product.category_id, db)
-    if category is None:
-        raise CategoryNotFound()
+    product = await product_service.create_product(product, current_user)
+    return product
 
-    new_product_orm = ProductModel(**product.model_dump(),
-                                   seller_id=current_user.id)
 
-    db.add(new_product_orm)
-    await db.commit()
-    await db.refresh(new_product_orm)
-
-    return new_product_orm
+    # # проверка существования категории
+    # category = await find_category(product.category_id, db)
+    # if category is None:
+    #     raise CategoryNotFound()
+    #
+    # new_product_orm = ProductModel(**product.model_dump(),
+    #                                seller_id=current_user.id)
+    #
+    # db.add(new_product_orm)
+    # await db.commit()
+    # await db.refresh(new_product_orm)
+    #
+    # return new_product_orm
 
 
 @router.get('/search/{category_id}', response_model=list[ProductSchema])
 async def get_products_by_category(category_id: int,
-                                   db: AsyncSession = Depends(get_async_db)):
+                                   product_service: ProductService = Depends(get_product_service)):
     """ Возвращает товар в категории по его ID """
-    # существует ли категория?
-    category = await find_category(category_id, db)
-    if category is None:
-        raise CategoryNotFound()
-    # есть ли продукты в этой категории?
-    products = await find_active_product(category_id, db)
-    if not products:
-        raise ProductNotFound()
+    products = await product_service.find_products_by_category(category_id)
     return products
-
 
 @router.get("/search/{product_id}", response_model=ProductSchema) ###### refactoring --->
 async def get_product(product_id: int,

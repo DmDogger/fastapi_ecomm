@@ -50,3 +50,9 @@ class ProductOwnershipError(HTTPException):
         super().__init__(status_code=403,
                          detail='You can delete only your own products')
         self.error_code = 'PRODUCT_OWNERSHIP_ERROR'
+
+class AccessDenied(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=403,
+                         detail='Access forbidden, you are not seller or admin')
+        self.error_code = 'ACCESS_DENIED'

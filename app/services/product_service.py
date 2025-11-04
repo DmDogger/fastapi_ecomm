@@ -1,24 +1,66 @@
+from fastapi_pagination import Params
+from fastapi_pagination.ext.sqlalchemy import paginate
+
 from app.models.users import User as UserModel
 from app.repositories.products_repo import ProductRepository
 from app.core.exceptions import (ProductOwnershipError,
-                                 ProductNotFound)
+                                 ProductNotFound,
+                                 CategoryNotFound,
+                                 AccessDenied)
 from app.repositories.review_repo import ReviewRepository
+from app.repositories.category_repo import CategoryRepository
+from app.schemas import ProductFilter, ProductCreate as ProductCreateSchema
 
 
 class ProductService:
-    def __init__(self, product_repository: ProductRepository, review_repository: ReviewRepository):
+    def __init__(self, product_repository: ProductRepository,
+                 review_repository: ReviewRepository,
+                 category_repository: CategoryRepository):
         self._product_repository = product_repository
         self._review_repository = review_repository
+        self._category_repository = category_repository
 
     async def get_product_by_owner(self, product_id: int,
                                          current_user: UserModel):
-        """ Возвращает продукт владельца """
+        """ Returns the owners product """
         product = await self._product_repository.get_product_by_seller(product_id, current_user.id)
         if not product:
             raise ProductOwnershipError()
+        return product
+
+    async def get_filtered_products(self,
+                                    filter_: ProductFilter,
+                                    params: Params
+                                    ):
+        """ Returns filtered and paginated products """
+        query = await self._product_repository.get_query_for_pagination()
+        query = filter_.filter(query)
+        return await paginate(conn=self._product_repository.db, query=query, params=params)
+
+    async def create_product(self, product_data: ProductCreateSchema, user: UserModel):
+        if user.role != 'seller' and user.role != 'admin':
+            raise AccessDenied()
+        category = self._product_repository.get(product_data.category_id)
+        if not category:
+            raise CategoryNotFound()
+        data = product_data.model_dump()
+        data.update({'seller_id': user.id})
+        new_product = await self._product_repository.create(data)
+        return new_product
+
+    async def find_products_by_category(self, category_id: int):
+        """ Find and returns all products by category ID"""
+        category = await self._category_repository.get(category_id)
+        if not category:
+            raise CategoryNotFound()
+        products = await self._product_repository.get_all_by_category(category_id)
+        if not products:
+            raise ProductNotFound()
+        return products
+
 
     async def find_all_active_products(self):
-        """ Находит все активные товары """
+        """ Finds all active products """
         all_products = await self._product_repository.get_all()
         if not all_products:
             raise ProductNotFound()
@@ -26,7 +68,7 @@ class ProductService:
 
 
     async def find_active_product(self, product_id: int):
-        """ Находит активный товар """
+        """ Finds active product by ID """
         product = await self._product_repository.get(product_id)
         if not product:
             raise ProductNotFound()

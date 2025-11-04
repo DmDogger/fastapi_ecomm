@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.routers import categories, products, users, reviews
 from fastapi_pagination import add_pagination
+import time
 app = FastAPI(
     title='OMG!Place',
     description='E-commerce API App.',
@@ -15,7 +16,6 @@ app.include_router(reviews.router)
 
 # Добавляем pagination в нашу аппку
 add_pagination(app)
-
 @app.get('/')
 async def root():
     """

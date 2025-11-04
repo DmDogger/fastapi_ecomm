@@ -33,7 +33,7 @@ class CategoryRepository(BaseSQLRepository):
             .values(**updated_data)
         )
         await self.db.execute(stmt)
-        return self.get(id_)
+        return await self.get(id_)
 
     async def get_all(self):
         stmt = select(CategoryModel).where(CategoryModel.is_active == True)
@@ -42,7 +42,7 @@ class CategoryRepository(BaseSQLRepository):
         return result
 
     async def delete(self, id_: int):
-        category = self.get(id_)
+        category = await self.get(id_)
         if not category:
             return None
         category.is_active = False

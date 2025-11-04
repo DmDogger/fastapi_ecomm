@@ -9,9 +9,11 @@ class ProductRepository(BaseSQLRepository):
     def __init__(self, db: AsyncSession, model: Base):
         super().__init__(db, model)
 
-    async def create(self, **kwargs):
-        product = ProductModel(**kwargs)
+    async def create(self, product_data: dict):
+        product = ProductModel(**product_data)
         self.db.add(product)
+        await self.db.commit()
+        await self.db.refresh(product)
         return product
 
     async def get(self, id_: int):
@@ -20,8 +22,18 @@ class ProductRepository(BaseSQLRepository):
         result = await self.db.scalars(stmt)
         return result.first()
 
+    async def get_query_for_pagination(self):
+        stmt = select(ProductModel).where(ProductModel.is_active == True)
+        return stmt
+
     async def get_all(self):
         stmt = select(ProductModel).where(ProductModel.is_active == True)
+        result = await self.db.scalars(stmt)
+        return result.all()
+
+    async def get_all_by_category(self, id_: int):
+        stmt = select(ProductModel).where(ProductModel.category_id == id_,
+                                          ProductModel.is_active == True)
         result = await self.db.scalars(stmt)
         return result.all()
 

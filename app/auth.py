@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.core.exceptions import AccessDenied
 from app.models.users import User as UserModel
 from app.config import SECRET_KEY, ALGORITHM
 from app.db_depends import get_async_db
@@ -78,7 +79,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme),
 
 def get_current_seller(current_user: UserModel = Depends(get_current_user)):
     if not current_user.role == 'seller':
-        raise HTTPException(status_code=403, detail='Denied: Only seller can perform this action.')
+        raise AccessDenied()
     return current_user
 
 def get_current_admin(current_user: UserModel = Depends(get_current_user)):
