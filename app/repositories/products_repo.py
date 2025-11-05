@@ -74,4 +74,5 @@ class ProductRepository(BaseSQLRepository):
         if not product:
             return None
         product.is_active = False
+        self.db.add(product)
         return product

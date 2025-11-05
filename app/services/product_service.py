@@ -19,7 +19,7 @@ class ProductService:
         self._product_repository = product_repository
         self._review_repository = review_repository
         self._category_repository = category_repository
-
+        
     async def get_product_by_owner(self, product_id: int,
                                          current_user: UserModel):
         """ Returns the owners product """
@@ -75,7 +75,7 @@ class ProductService:
         return product
 
     async def calculate_avg_rating(self, product_id: int):
-        """ Метод для расчета среднего рейтинга продукта"""
+        """ Method for calculating the average rating of a product"""
         product = await self._product_repository.get(product_id)
         if not product:
             raise ProductNotFound()
@@ -86,10 +86,46 @@ class ProductService:
         avg = total / len(reviews)
         return avg
 
-    async def push_product_rating(self, product_id):
+    async def push_product_rating(self, product_id: int):
+        """ Method is pushing product rating """
         new_rating = await self.calculate_avg_rating(product_id)
         await self._product_repository.update_product_rating(product_id, new_rating)
         await self._product_repository.db.commit()
+
+    async def update_product(self, product_id: int,
+                             product_data: ProductCreateSchema,
+                             user: UserModel):
+        """ Method is updating product data """
+        product = await self._product_repository.get(product_id)
+        if not product:
+            raise ProductNotFound()
+        owner_product = await self._product_repository.get_product_by_seller(product_id, user.id)
+        if not owner_product:
+            raise ProductOwnershipError()
+        category = await self._category_repository.get(product_data.category_id)
+        if not category:
+            raise CategoryNotFound()
+
+        updated_product = await self._product_repository.update(product_id, product_data.model_dump())
+        await self._product_repository.db.commit()
+        await self._product_repository.db.refresh(updated_product)
+        return updated_product
+
+
+
+    async def delete_product(self, product_id, user):
+        """ Method is deleting product """
+        product = await self._product_repository.get(product_id)
+        if not product:
+            raise ProductNotFound()
+        owner_product = self._product_repository.get_product_by_seller(product_id, user.id)
+        if not owner_product:
+            raise ProductOwnershipError()
+        await self._product_repository.delete(product_id)
+        await self._product_repository.db.commit()
+
+
+
 
 
 
