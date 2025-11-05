@@ -107,7 +107,7 @@ class ProductService:
             raise CategoryNotFound()
 
         updated_product = await self._product_repository.update(product_id, product_data.model_dump())
-        await self._product_repository.db.commit()
+        await self._product_repository.db.commit()  # Обратить внимание! Нужно переделать, чтобы транзакциями управлял не сервис!
         await self._product_repository.db.refresh(updated_product)
         return updated_product
 
@@ -120,7 +120,7 @@ class ProductService:
         if not owner_product:
             raise ProductOwnershipError()
         await self._product_repository.delete(product_id)
-        await self._product_repository.db.commit()
+        await self._product_repository.db.commit()  # Обратить внимание! Нужно переделать, чтобы транзакциями управлял не сервис!
 
 
 

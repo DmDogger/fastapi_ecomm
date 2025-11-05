@@ -11,16 +11,19 @@ class ReviewRepository(BaseSQLRepository):
         super().__init__(db, model)
 
     async def get(self, id_: int):
+        """ Get review from database """
         stmt = select(ReviewModel).where(ReviewModel.id == id_,
                                          ReviewModel.is_active == True)
         return await self.db.scalar(stmt)
 
     async def get_all(self):
+        """ Get all reviews from database """
         stmt = select(ReviewModel).where(ReviewModel.is_active == True)
         result = await self.db.scalars(stmt)
         return result.all()
 
     async def get_reviews_by_product_id(self, id_: int):
+        """ Get review by product ID from database"""
         stmt = select(ReviewModel).where(ReviewModel.product_id == id_,
                                          ReviewModel.is_active == True)
         result = await self.db.scalars(stmt)
@@ -30,6 +33,7 @@ class ReviewRepository(BaseSQLRepository):
     async def get_review_by_user(self,
                                  product_id: int,
                                  user_id: int):
+        """ Get review by user ID from database """
         stmt = select(ReviewModel).where(ReviewModel.product_id == product_id,
                                          ReviewModel.user_id == user_id,
                                          ReviewModel.is_active == True)
@@ -37,12 +41,14 @@ class ReviewRepository(BaseSQLRepository):
         return result.first()
 
     async def create(self, review: dict):
+        """ Create review in database """
         review = ReviewModel(**review)
         self.db.add(review)
         return review
 
 
     async def update(self, id_: int, updated_data: dict):
+        """ Update review in database """
         stmt = (
             sql_update(ReviewModel)
             .where(ReviewModel.id == id_,
@@ -53,6 +59,7 @@ class ReviewRepository(BaseSQLRepository):
         return self.get(id_)
 
     async def delete(self, id_):
+        """ Soft delete review """
         stmt = select(ReviewModel).where(ReviewModel.id == id_,
                                          ReviewModel.is_active == True)
         review = await self.db.scalar(stmt)

@@ -49,7 +49,7 @@ class ReviewService:
                                             product_id: int,
                                             user_id: int
                                             ) -> bool:
-        """ Проверяет, оставлял ли пользователь отзыв или нет"""
+        """ Method checks review. If user already left review, method returns true else false. """
         result = await self._review_repository.get_review_by_user(product_id, user_id)
         if result:
             return True
@@ -57,7 +57,7 @@ class ReviewService:
 
     async def delete_review(self, review_id: int,
                             user: UserModel):
-        """ Method allows delete review by ID """
+        """ Method allows to delete review by ID """
         if user.role != 'admin':
             raise AccessDenied()
         review = await self._review_repository.get(review_id)
