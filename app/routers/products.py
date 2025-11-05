@@ -24,13 +24,13 @@ async def get_products(product_service:ProductService = Depends(get_product_serv
     return products
 
 
-@router.get("/search/{product_id}", response_model=ProductSchema)  ###### refactoring --->
+@router.get("/search/{product_id}", response_model=ProductSchema, status_code=200)  ###### refactoring --->
 async def get_product(product_id: int,
                       product_service: ProductService = Depends(get_product_service)):
     """
     Returns a product by ID.
     """
-    product = product_service.find_active_product(product_id)
+    product = await product_service.find_active_product(product_id)
     return product
 
 @router.post('/',response_model=ProductSchema, status_code=201)
