@@ -55,7 +55,6 @@ class CategoryFilter(SQLAlchemyFilter):
         model = CategoryModel
 
 
-# --- Модели Товаров ---
 class ProductCreate(BaseModel):
     """
     Модель для создания и обновления категорий.

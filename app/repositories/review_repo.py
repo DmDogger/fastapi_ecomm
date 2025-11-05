@@ -10,11 +10,6 @@ class ReviewRepository(BaseSQLRepository):
     def __init__(self, db: AsyncSession, model: Base):
         super().__init__(db, model)
 
-    async def create(self, **kwargs):
-        review = ReviewModel(**kwargs)
-        self.db.add(review)
-        return review
-
     async def get(self, id_: int):
         stmt = select(ReviewModel).where(ReviewModel.id == id_,
                                          ReviewModel.is_active == True)
@@ -23,10 +18,7 @@ class ReviewRepository(BaseSQLRepository):
     async def get_all(self):
         stmt = select(ReviewModel).where(ReviewModel.is_active == True)
         result = await self.db.scalars(stmt)
-        result = result.all()
-        if not result:
-            return None
-        return result
+        return result.all()
 
     async def get_reviews_by_product_id(self, id_: int):
         stmt = select(ReviewModel).where(ReviewModel.product_id == id_,
@@ -34,6 +26,20 @@ class ReviewRepository(BaseSQLRepository):
         result = await self.db.scalars(stmt)
         result = result.all()
         return result
+
+    async def get_review_by_user(self,
+                                 product_id: int,
+                                 user_id: int):
+        stmt = select(ReviewModel).where(ReviewModel.product_id == product_id,
+                                         ReviewModel.user_id == user_id,
+                                         ReviewModel.is_active == True)
+        result = await self.db.scalars(stmt)
+        return result.first()
+
+    async def create(self, review: dict):
+        review = ReviewModel(**review)
+        self.db.add(review)
+        return review
 
 
     async def update(self, id_: int, updated_data: dict):

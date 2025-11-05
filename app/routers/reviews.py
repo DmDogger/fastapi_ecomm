@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.dependecies.services.review_service import get_review_service
 from app.core.exceptions import ProductNotFound, SellerCannotLeaveReview, CanReviewOnlyOnce, ReviewNotFound
 
 from app.auth import get_current_user, get_current_admin
@@ -11,6 +13,7 @@ from app.models.reviews import Review as ReviewModel
 from app.models.users import User as UserModel
 from app.repositories.review_repo import ReviewRepository
 from app.db_depends import get_async_db
+from app.services.review_service import ReviewService
 
 router = APIRouter(
     prefix='/reviews',
@@ -18,35 +21,15 @@ router = APIRouter(
 )
 
 @router.get('/', status_code=200)
-async def get_all_reviews(db: AsyncSession = Depends(get_async_db)):
-    """ Возвращает список всех отзывов """
-    reviews = await db.scalars(select(ReviewModel))
-    return reviews.all()
-
+async def get_all_reviews(review_service: ReviewService = Depends(get_review_service)):
+    """ Return list of reviews """
+    return await review_service.get_reviews()
 
 @router.post('/', response_model=ReviewSchema, status_code=201)
 async def create_review(review_data: ReviewCreateSchema,
-                        current_user: UserModel = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_async_db)):
-    """ Метод позволяет добавить отзыв """
-    product = await find_active_product(review_data.product_id, db)
-    if not product:
-        raise ProductNotFound()
-    if current_user.role == 'seller':
-        raise SellerCannotLeaveReview()
-    if await user_already_reviewed_product(review_data.product_id, current_user.id, db):
-        raise CanReviewOnlyOnce()
-
-    review = ReviewModel(user_id=current_user.id,
-                         product_id=review_data.product_id,
-                         grade=review_data.grade,
-                         comment=review_data.comment)
-
-    db.add(review)
-    await db.commit()
-    await db.refresh(review)
-    await push_product_rating(product.id, db)
-    return review
+                        review_service: ReviewService = Depends(get_review_service),
+                        user: UserModel = Depends(get_current_user)):
+    return await review_service.create_review(review_data, user)
 
 @router.delete('/{review_id}', status_code=200)
 async def delete_review(review_id: int,

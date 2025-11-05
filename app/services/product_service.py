@@ -111,8 +111,6 @@ class ProductService:
         await self._product_repository.db.refresh(updated_product)
         return updated_product
 
-
-
     async def delete_product(self, product_id, user):
         """ Method is deleting product """
         product = await self._product_repository.get(product_id)
