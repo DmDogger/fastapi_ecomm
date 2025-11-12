@@ -22,6 +22,18 @@ class ProductRepository(BaseSQLRepository):
         result = await self.db.scalars(stmt)
         return result.first()
 
+    async def get_searched_products_by_name(self, search: str):
+        stmt = select(ProductModel).where(ProductModel.name.ilike(f'{search}%'),
+                                          ProductModel.is_active == True)
+        res = await self.db.scalars(stmt)
+        return res.all()
+
+    async def get_searched_products_by_price(self, search: int | float):
+        stmt = select(ProductModel).where(ProductModel.price == search,
+                                          ProductModel.is_active == True)
+        res = await self.db.scalars(stmt)
+        return res.all()
+
     async def get_query_for_pagination(self):
         stmt = select(ProductModel).where(ProductModel.is_active == True)
         return stmt

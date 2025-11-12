@@ -17,8 +17,8 @@ router = APIRouter(
 
 @router.get('/', response_model=Page[ProductOut], status_code=200)
 async def get_products(product_service:ProductService = Depends(get_product_service),
-                       product_filter: ProductFilter = FilterDepends(ProductFilter),
-                       params: Params = Depends()):
+        product_filter: ProductFilter = FilterDepends(ProductFilter),
+        params: Params = Depends()):
     """
     Returns a list of filtered or paginated products.
     """
@@ -35,6 +35,17 @@ async def get_product(product_id: int,
     product = await product_service.find_active_product(product_id)
     return ResponseModel(status='success',
                          data=product)
+
+@router.get('/search/{search}/all',response_model=ResponseModel[list[ProductSchema]], status_code=200)
+async def get_product_with_search(search_by_name: str | None,
+                                  search_by_price: int | float | None,
+                                  product_service: ProductService = Depends(get_product_service)):
+    """
+    Find a product with a search string.
+    """
+    products = await product_service.get_product_by_search(search_by_name, search_by_price)
+    return ResponseModel(status='success',
+                         data=products)
 
 @router.post('/',response_model=ResponseModel[ProductSchema], status_code=201)
 async def create_product(product: ProductCreateSchema,

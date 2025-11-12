@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi_filter import FilterDepends
 from fastapi_pagination import Page, Params
 
-from app.schemas import Category as CategoryResponseSchema, CategoryCreate as CategoryCreateSchema, CategoryOut, CategoryFilter
+from app.schemas import Category as CategoryResponseSchema, CategoryCreate as CategoryCreateSchema, CategoryOut, \
+    CategoryFilter, ResponseModel
 from app.core.dependecies.services.category_service import CategoryService, get_category_service
 
 router = APIRouter(
@@ -20,17 +21,18 @@ async def get_category(category_service: CategoryService = Depends(get_category_
     categories = await category_service.get_paginate_categories(filter_=filter_, params=params)
     return categories
 
-@router.post('/', response_model=CategoryResponseSchema, status_code=201)
+@router.post('/', response_model=ResponseModel[CategoryResponseSchema], status_code=201)
 async def create_category(category: CategoryCreateSchema,
                           category_service: CategoryService = Depends(get_category_service)):
     """
     Создает новую категорию
     """
     category = await category_service.create_category(category)
-    return category
+    return ResponseModel(status='success',
+                        data=category)
 
 
-@router.put('/{category_id}', response_model=CategoryResponseSchema, status_code=200)
+@router.put('/{category_id}', response_model=ResponseModel[CategoryResponseSchema], status_code=200)
 async def update_category(category_id: int,
                           category: CategoryCreateSchema,
                           category_service: CategoryService = Depends(get_category_service)):
@@ -38,7 +40,8 @@ async def update_category(category_id: int,
     Обновляет выбранную категорию по ее ID
     """
     updated_category = await category_service.update_category(category, category_id)
-    return updated_category
+    return ResponseModel(status='success',
+                         data=updated_category)
 
 
 

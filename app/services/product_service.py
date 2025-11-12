@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 
@@ -9,7 +10,7 @@ from app.core.exceptions import (ProductOwnershipError,
                                  AccessDenied)
 from app.repositories.review_repo import ReviewRepository
 from app.repositories.category_repo import CategoryRepository
-from app.schemas import ProductFilter, ProductCreate as ProductCreateSchema
+from app.schemas import Product as ProductModel, ProductFilter, ProductCreate as ProductCreateSchema
 
 
 class ProductService:
@@ -66,8 +67,26 @@ class ProductService:
             raise ProductNotFound()
         return all_products
 
+    async def get_product_by_search(self, search_name: str | None,
+                                    search_price: int | float | None):
+        #--- поиск по имени ---
+        search_name = search_name.strip()
+        if not search_name:
+            raise ProductNotFound()
+        products_name = await self._product_repository.get_searched_products_by_name(search_name)
+        if not products_name:
+            raise ProductNotFound()
+        # --- поиск по цене
+        products_price = await self._product_repository.get_searched_products_by_price(search_price)
+        if not products_price:
+            raise ProductNotFound()
+        products_name = [ProductModel.model_validate(p) for p in products_name]
+        products_price = [ProductModel.model_validate(p) for p in products_price]
+        total_prods = products_name + products_price
+        return total_prods
 
-    async def find_active_product(self, product_id: int):
+
+    async def find_active_product(self, product_id: int, search: str | None):
         """ Finds active product by ID """
         product = await self._product_repository.get(product_id)
         if not product:

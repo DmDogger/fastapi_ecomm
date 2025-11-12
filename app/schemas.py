@@ -12,6 +12,7 @@ T = TypeVar('T')
 class ResponseModel(BaseModel, Generic[T]):
     status: str = Field(description='Поле для статуса ответа')
     data: T
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryCreate(BaseModel):
@@ -96,6 +97,7 @@ class ProductCreate(BaseModel):
         gt=0,
         description='ID категории товара'
     )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Product(ProductCreate):
@@ -144,6 +146,8 @@ class ReviewCreate(BaseModel):
                          )
     grade: int = Field(ge=1, le=5, description='Оценка товара. От 1 до 5.')
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Review(BaseModel):
     """ Модель для ответа.
@@ -156,6 +160,17 @@ class Review(BaseModel):
     comment_date: datetime
     is_active: bool
     grade: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductList(BaseModel):
+    items: list[Product] = Field(description='Товары текущей страницы')
+    total: int = Field(ge=0, description='Общее количество товаров')
+    page: int = Field(ge=1, description='Номер текущей страницы')
+    page_size: int = Field(ge=1, description='Количество элементов на странице')
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ProductOut(BaseModel):
     """ Модель для ответа с данными продукта с примененной пагинацией  """
